@@ -11,7 +11,7 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, AutoModel, get_linear_schedule_with_warmup
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 from typing import List, Dict, Any
 
 import ast
@@ -349,7 +349,7 @@ def run_train(args):
     # AMP(Automatic Mixed Precision) 사용 시, 그래디언트 스케일러 초기화
     scaler = torch.amp.GradScaler() if args.use_amp and device.type == 'cuda' else None
 
-    best_val_loss = float('inf')
+    best_f1_score = float('-inf') # F1-score는 높을수록 좋으므로 초기값을 음의 무한대로 설정
     patience_counter = 0
 
     for epoch in range(args.epochs):
@@ -377,6 +377,8 @@ def run_train(args):
         # --- 검증 단계 ---
         model.eval()
         total_eval_loss = 0
+        all_preds = []
+        all_labels = []
         for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{args.epochs} | Validation"):
             with torch.no_grad():
                 labels = batch.pop("labels").to(device)
@@ -390,26 +392,38 @@ def run_train(args):
                 
                 loss = loss_fct(logits, labels)
                 total_eval_loss += loss.item()
+
+                preds = torch.argmax(logits, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
         
         avg_val_loss = total_eval_loss / len(val_loader)
         print(f"Epoch {epoch+1} | Validation Loss: {avg_val_loss:.4f}")
 
-        # --- 조기 종료(Early Stopping) 및 모델 저장 ---
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
+        # --- Classification Report 및 혼동 행렬 출력 ---
+        target_names = [label for label, i in sorted(label_map.items(), key=lambda item: item[1])]
+        report = classification_report(all_labels, all_preds, target_names=target_names, output_dict=True, zero_division=0)
+        macro_avg_f1 = report['macro avg']['f1-score']
+        print(f"Epoch {epoch+1} | Validation Macro Avg F1-score: {macro_avg_f1:.4f}")
+        print("--- Validation Classification Report ---")
+        print(classification_report(all_labels, all_preds, target_names=target_names, digits=4, zero_division=0))
+
+        # --- 조기 종료(Early Stopping) 및 모델 저장 (Macro Avg F1-score 기준) ---
+        if macro_avg_f1 > best_f1_score:
+            best_f1_score = macro_avg_f1
             patience_counter = 0
-            print(f"New best model found! Saving to {args.output_dir}")
+            print(f"New best model found based on Macro Avg F1-score! Saving to {args.output_dir}")
             model.save_pretrained(args.output_dir)
             tokenizer.save_pretrained(args.output_dir)
         else:
             patience_counter += 1
-            print(f"Validation loss did not improve. Patience: {patience_counter}/{args.early_stopping_patience}")
+            print(f"Macro Avg F1-score did not improve. Patience: {patience_counter}/{args.early_stopping_patience}")
         
         if patience_counter >= args.early_stopping_patience:
             print("Early stopping triggered.")
             break
 
-    print(f"Training complete. Best model saved with validation loss: {best_val_loss:.4f}")
+    print(f"Training complete. Best model saved with Macro Avg F1-score: {best_f1_score:.4f}")
 
 # 스크립트 실행을 위한 ArgumentParser 설정
 parser = argparse.ArgumentParser(description="ContextRiskModel 학습 스크립트")
