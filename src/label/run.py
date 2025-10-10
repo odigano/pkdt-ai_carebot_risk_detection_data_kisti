@@ -42,7 +42,6 @@ def run_all(args: Namespace):
         learning_rate=args.learning_rate,
         lstm_hidden_size=args.lstm_hidden_size,
         num_workers=args.num_workers,
-        seed=args.seed,
         use_amp=args.use_amp,
         force_cpu=args.force_cpu,
         use_attention=args.use_attention,
@@ -114,7 +113,6 @@ def main():
     train_group.add_argument("--epochs", type=int, default=10, help="총 학습 에폭 수")
     train_group.add_argument("--learning_rate", type=float, default=2e-5, help="학습률")
     train_group.add_argument("--lstm_hidden_size", type=int, default=256, help="LSTM 은닉층 크기")
-    train_group.add_argument("--seed", type=int, default=42, help="재현성을 위한 시드 값")
     train_group.add_argument("--early_stopping_patience", type=int, default=5, help="조기 종료 patience")
     train_group.add_argument("--use_amp", action='store_true', help="Automatic Mixed Precision 사용 여부")
     train_group.add_argument("--use_attention", action=argparse.BooleanOptionalAction, default=True, help="모델에 어텐션 메커니즘 사용 여부")

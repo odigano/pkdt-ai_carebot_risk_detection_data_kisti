@@ -112,7 +112,7 @@ cd ./src/label # 또는 cd ./src/summary
 python preprocess.py
 
 # usage: preprocess.py [--input_csv INPUT_CSV] [--output_path OUTPUT_PATH] [--tokenizer_name TOKENIZER_NAME]
-#                      [--k_context K_CONTEXT] [--session_gap_seconds # SESSION_GAP_SECONDS] [--max_seq_len MAX_SEQ_LEN]
+#                      [--k_context K_CONTEXT] [--session_gap_seconds SESSION_GAP_SECONDS] [--max_seq_len MAX_SEQ_LEN]
 # options:
 #   --input_csv INPUT_CSV
 #                         원본 데이터 CSV 파일 경로
@@ -133,14 +133,16 @@ python preprocess.py
 ```bash
 python train.py
 
-# usage: train.py [--preprocessed_path PREPROCESSED_PATH] [--output_dir OUTPUT_DIR] [--tokenizer_name TOKENIZER_NAME]
-#                 [--encoder_name ENCODER_NAME] [--epochs EPOCHS] [--batch_size BATCH_SIZE] [--learning_rate LEARNING_RATE]
-#                 [--lstm_hidden_size LSTM_HIDDEN_SIZE] [--num_workers NUM_WORKERS] [--seed SEED]
-#                 [--early_stopping_patience EARLY_STOPPING_PATIENCE] [--use_amp] [--force_cpu]
+# usage: train.py [--train_preprocessed_path TRAIN_PREPROCESSED_PATH] [--val_preprocessed_path VAL_PREPROCESSED_PATH]
+#                 [--output_dir OUTPUT_DIR] [--tokenizer_name TOKENIZER_NAME] [--encoder_name ENCODER_NAME] [--epochs EPOCHS]
+#                 [--batch_size BATCH_SIZE] [--learning_rate LEARNING_RATE] [--lstm_hidden_size LSTM_HIDDEN_SIZE]
+#                 [--num_workers NUM_WORKERS] [--early_stopping_patience EARLY_STOPPING_PATIENCE] [--use_amp] [--force_cpu]
 #                 [--use_attention | --no-use_attention]
 # options:
-#   --preprocessed_path PREPROCESSED_PATH
-#                         전처리된 데이터 파일 경로 (CSV)
+#   --train_preprocessed_path TRAIN_PREPROCESSED_PATH
+#                         전처리된 학습 데이터 파일 경로 (CSV)
+#   --val_preprocessed_path VAL_PREPROCESSED_PATH
+#                         전처리된 검증 데이터 파일 경로 (CSV)
 #   --output_dir OUTPUT_DIR
 #                         학습된 모델이 저장될 디렉토리
 #   --tokenizer_name TOKENIZER_NAME
@@ -156,7 +158,6 @@ python train.py
 #                         LSTM 은닉층 크기
 #   --num_workers NUM_WORKERS
 #                         DataLoader를 위한 워커 수
-#   --seed SEED           재현성을 위한 시드 값
 #   --early_stopping_patience EARLY_STOPPING_PATIENCE
 #                         조기 중단을 위한 patience 값
 #   --use_amp             Automatic Mixed Precision 사용 여부
@@ -174,11 +175,11 @@ python predict.py
 # 단일 텍스트 요약 (요약 모델의 경우)
 python predict.py --mode inference --text "요약할 텍스트입니다."
 
-# usage: predict.py [--preprocessed_path PREPROCESSED_PATH] [--model_dir MODEL_DIR] [--output_dir OUTPUT_DIR]
+# usage: predict.py [--val_preprocessed_path VAL_PREPROCESSED_PATH] [--model_dir MODEL_DIR] [--output_dir OUTPUT_DIR]
 #                   [--mode {inference,evaluate}] [--batch_size BATCH_SIZE] [--num_workers NUM_WORKERS] [--force_cpu]
 # options:
-#   --preprocessed_path PREPROCESSED_PATH
-#                         Preprocessed data file path (.csv)
+#   --val_preprocessed_path VAL_PREPROCESSED_PATH
+#                         전처리된 검증 데이터 경로 (CSV)
 #   --model_dir MODEL_DIR
 #                         학습된 모델(pytorch_model.bin, config.json 등)이 저장된 디렉토리
 #   --output_dir OUTPUT_DIR

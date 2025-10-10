@@ -1,7 +1,6 @@
 import argparse
 import os
 import json
-import random
 import math
 import pandas as pd
 import numpy as np
@@ -289,17 +288,8 @@ class FocalLoss(nn.Module):
 
 # --- 4. 학습 (Training) ---
 
-def set_seed(seed_value=42):
-    """재현성을 위해 랜덤 시드를 고정합니다."""
-    random.seed(seed_value)
-    np.random.seed(seed_value)
-    torch.manual_seed(seed_value)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed_value)
-
 def run_train(args):
     """모델 학습 파이프라인 전체를 실행합니다."""
-    set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() and not args.force_cpu else "cpu")
     print(f"Starting training on device: {device}")
 
@@ -433,7 +423,6 @@ parser.add_argument("--batch_size", type=int, default=64, help="배치 크기")
 parser.add_argument("--learning_rate", type=float, default=2e-5, help="학습률")
 parser.add_argument("--lstm_hidden_size", type=int, default=256, help="LSTM 은닉층 크기")
 parser.add_argument("--num_workers", type=int, default=0, help="DataLoader를 위한 워커 수")
-parser.add_argument("--seed", type=int, default=42, help="재현성을 위한 시드 값")
 parser.add_argument("--early_stopping_patience", type=int, default=5, help="조기 중단을 위한 patience 값")
 parser.add_argument("--use_amp", action='store_true', help="Automatic Mixed Precision 사용 여부")
 parser.add_argument("--force_cpu", action='store_true', help="CUDA 사용 가능 시에도 CPU 강제 사용")
