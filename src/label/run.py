@@ -20,7 +20,7 @@ def run_all(args: Namespace):
     # 1. 전처리 단계에 필요한 인자들만 모아 새로운 Namespace 객체를 생성합니다.
     preprocess_args = Namespace(
         input_csv=args.input_csv,
-        output_path=args.preprocessed_path,
+        output_path=args.train_preprocessed_path,
         tokenizer_name=args.tokenizer_name,
         k_context=args.k_context,
         session_gap_seconds=args.session_gap_seconds,
@@ -32,7 +32,8 @@ def run_all(args: Namespace):
     print("--- [2/3] Running Training ---")
     # 2. 학습 단계에 필요한 인자들로 Namespace 객체를 생성합니다.
     train_args = Namespace(
-        preprocessed_path=args.preprocessed_path, # 전처리 결과물을 입력으로 사용
+        train_preprocessed_path=args.train_preprocessed_path,
+        val_preprocessed_path=args.val_preprocessed_path,
         output_dir=args.model_output_dir,
         tokenizer_name=args.tokenizer_name,
         encoder_name=args.encoder_name,
@@ -53,8 +54,8 @@ def run_all(args: Namespace):
     print("--- [3/3] Running Evaluation ---")
     # 3. 평가 단계에 필요한 인자들로 Namespace 객체를 생성합니다.
     predict_args = Namespace(
-        preprocessed_path=args.preprocessed_path, # 평가할 데이터
-        model_dir=args.model_output_dir,         # 학습된 모델 경로를 입력으로 사용
+        val_preprocessed_path=args.val_preprocessed_path,
+        model_dir=args.model_output_dir,
         output_dir=args.eval_output_dir,
         mode='evaluate', # 'all' 파이프라인에서는 항상 평가 모드로 실행
         batch_size=args.batch_size,
@@ -94,7 +95,7 @@ def main():
 
     # 전처리 인자 추가
     preprocess_group.add_argument("--input_csv", type=str, default="../../data/label/train_data.csv", help="원본 데이터 CSV 파일 경로")
-    preprocess_group.add_argument("--preprocessed_path", type=str, default="../../data/label/preprocessed.csv", help="전처리된 데이터가 저장될 경로")
+    preprocess_group.add_argument("--train_preprocessed_path", type=str, default="../../data/label/preprocessed_train_data.csv", help="전처리된 데이터가 저장될 경로")
     preprocess_group.add_argument("--k_context", type=int, default=20, help="문맥으로 사용할 이전 발화의 수")
     preprocess_group.add_argument("--session_gap_seconds", type=int, default=600, help="새로운 세션을 정의하기 위한 시간 간격(초)")
     preprocess_group.add_argument("--max_seq_len", type=int, default=128, help="입력 시퀀스의 최대 토큰 길이")
@@ -106,6 +107,8 @@ def main():
     all_parser.add_argument("--force_cpu", action='store_true', help="CUDA 사용 가능 시에도 CPU 강제 사용")
     
     # 학습 인자 추가
+    train_group.add_argument("--train_preprocessed_path", type=str, default="../../data/label/preprocessed_train_data.csv", help="전처리된 학습 데이터 경로")
+    train_group.add_argument("--val_preprocessed_path", type=str, default="../../data/label/preprocessed_val_data.csv", help="전처리된 검증 데이터 경로")
     train_group.add_argument("--model_output_dir", type=str, default="../../model/label", help="학습된 모델이 저장될 디렉토리")
     train_group.add_argument("--encoder_name", type=str, default="klue/roberta-base", help="사전 학습된 인코더 모델 이름")
     train_group.add_argument("--epochs", type=int, default=10, help="총 학습 에폭 수")

@@ -303,20 +303,25 @@ def run_train(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.force_cpu else "cpu")
     print(f"Starting training on device: {device}")
 
-    print(f"Loading and parsing data from {args.preprocessed_path}...")
-    df = load_and_parse_csv(args.preprocessed_path)
+    print(f"Loading and parsing data from {args.train_preprocessed_path}...")
+    df = load_and_parse_csv(args.train_preprocessed_path)
     # 유효하지 않은 레이블을 가진 데이터를 필터링
     if "label" in df.columns:
         original_len = len(df)
         df = df[df['label'].isin(LABEL_ORDER)].copy()
-        if len(df) < original_len: print(f"Filtered out {original_len - len(df)} rows with invalid labels.")
+        if len(df) < original_len: print(f"Filtered out {original_len - len(df)} rows with invalid labels from training data.")
+
+    train_df = df
+
+    print(f"Loading and parsing validation data from {args.val_preprocessed_path}...")
+    val_df = load_and_parse_csv(args.val_preprocessed_path)
+    if "label" in val_df.columns:
+        original_len = len(val_df)
+        val_df = val_df[val_df['label'].isin(LABEL_ORDER)].copy()
+        if len(val_df) < original_len: print(f"Filtered out {original_len - len(val_df)} rows with invalid labels from validation data.")
 
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=True)
     label_map = {label: i for i, label in enumerate(LABEL_ORDER)}
-    
-    # 데이터를 학습용과 검증용으로 분할 (stratify를 사용하여 레이블 분포를 유지)
-    stratify_param = df['label'] if 'label' in df.columns and df['label'].value_counts().min() >= 2 else None
-    train_df, val_df = train_test_split(df, test_size=0.1, random_state=args.seed, stratify=stratify_param)
     
     # --- Focal Loss의 alpha 값 계산 로직 ---
     # 목표: 데이터가 적은 클래스(불균형)와 위험도가 높은 클래스에 더 높은 가중치를 부여
@@ -418,7 +423,8 @@ def run_train(args):
 
 # 스크립트 실행을 위한 ArgumentParser 설정
 parser = argparse.ArgumentParser(description="ContextRiskModel 학습 스크립트")
-parser.add_argument("--preprocessed_path", type=str, default="../../data/label/preprocessed.csv", help="전처리된 데이터 파일 경로 (CSV)")
+parser.add_argument("--train_preprocessed_path", type=str, default="../../data/label/preprocessed_train_data.csv", help="전처리된 학습 데이터 파일 경로 (CSV)")
+parser.add_argument("--val_preprocessed_path", type=str, default="../../data/label/preprocessed_val_data.csv", help="전처리된 검증 데이터 파일 경로 (CSV)")
 parser.add_argument("--output_dir", type=str, default="../../model/label", help="학습된 모델이 저장될 디렉토리")
 parser.add_argument("--tokenizer_name", type=str, default="klue/roberta-base", help="사전 학습된 토크나이저 이름")
 parser.add_argument("--encoder_name", type=str, default="klue/roberta-base", help="사전 학습된 인코더 모델 이름")

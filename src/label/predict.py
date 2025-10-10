@@ -178,8 +178,8 @@ def run_predict(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True)
     model = ContextRiskModel.from_pretrained(args.model_dir).to(device)
 
-    print(f"Loading and parsing data from: {args.preprocessed_path}...")
-    df = load_and_parse_csv(args.preprocessed_path)
+    print(f"Loading and parsing data from: {args.val_preprocessed_path}...")
+    df = load_and_parse_csv(args.val_preprocessed_path)
 
     label_map = {label: i for i, label in enumerate(LABEL_ORDER)}
     dataset = ContextDataset(df, label_map)
@@ -212,7 +212,7 @@ def run_predict(args):
 
 # 스크립트 실행을 위한 ArgumentParser 설정
 parser = argparse.ArgumentParser(description="학습된 ContextRiskModel을 평가하거나 추론하는 스크립트")
-parser.add_argument("--preprocessed_path", type=str, default="../../data/label/preprocessed_real_data.csv", help="Preprocessed data file path (.csv)")
+parser.add_argument("--val_preprocessed_path", type=str, default="../../data/label/preprocessed_val_data.csv", help="전처리된 검증 데이터 경로 (CSV)")
 parser.add_argument("--model_dir", type=str, default="../../model/label", help="학습된 모델(pytorch_model.bin, config.json 등)이 저장된 디렉토리")
 parser.add_argument("--output_dir", type=str, default="../../figures/label", help="평가 결과(CSV, 이미지 등)를 저장할 디렉토리")
 parser.add_argument("--mode", type=str, choices=['inference', 'evaluate'], default='evaluate', help="'inference': 단순 추론, 'evaluate': 정답과 비교하여 성능 평가")
