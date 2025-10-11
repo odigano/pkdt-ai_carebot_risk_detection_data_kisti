@@ -87,7 +87,6 @@ class ContextDataset(Dataset):
         attention_mask = row["attention_mask"]
 
         # 2. 시간 관련 특성
-        last_delta = math.log1p(row["delta_t"])
         last_hour = row["hour"]
         # 시간(hour)을 순환적인 특성으로 변환하여 23시와 0시가 가깝다는 것을 표현
         hour_sin = math.sin(2 * math.pi * last_hour / 24)
@@ -128,7 +127,7 @@ class ContextDataset(Dataset):
         item = {
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
-            "time_feats": torch.tensor([last_delta, hour_sin, hour_cos], dtype=torch.float),
+            "time_feats": torch.tensor([hour_sin, hour_cos], dtype=torch.float),
             "emo_feats": torch.tensor(emo_vec, dtype=torch.float),
             "context_risk_feats": torch.tensor([context_risk_feat], dtype=torch.float),
         }
@@ -173,7 +172,7 @@ class ContextRiskModel(nn.Module):
     문맥을 고려한 위험도 분류 모델.
     사전 학습된 언어 모델(Encoder)과 LSTM, 추가 특성을 결합한 하이브리드 구조.
     """
-    def __init__(self, encoder_name: str, emo_feat_dim: int, time_feat_dim: int = 3, num_labels: int = 4, lstm_hidden_size: int = 256, context_risk_feat_dim: int = 1, use_attention: bool = True):
+    def __init__(self, encoder_name: str, emo_feat_dim: int, time_feat_dim: int = 2, num_labels: int = 4, lstm_hidden_size: int = 256, context_risk_feat_dim: int = 1, use_attention: bool = True):
         super().__init__()
         # 모델의 설정을 저장하여 나중에 모델을 불러올 때 동일한 구조를 재현할 수 있도록 함
         self.config = {
