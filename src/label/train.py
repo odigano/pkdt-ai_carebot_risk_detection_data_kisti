@@ -115,10 +115,12 @@ class ContextDataset(Dataset):
                 if self.emo_score_indices['critical'] is not None: utterance_risk_score += emo_vec_context[self.emo_score_indices['critical']] * 2.0
                 if self.emo_score_indices['danger'] is not None: utterance_risk_score += emo_vec_context[self.emo_score_indices['danger']] * 1.0
                 
-                # 위험 점수가 0보다 클 경우, 시간 경과(delta_t)로 나누어 점수를 감쇠시킴
-                # (최근 발화일수록 더 큰 영향을 줌)
+                # 위험 점수가 0보다 클 경우, 시간 경과(delta_t)에 따라 지수적으로 점수를 감쇠시킴
                 if utterance_risk_score > 0:
-                    weighted_context_risk += utterance_risk_score / (delta_t + 1.0) # 분모가 0이 되는 것을 방지
+                    # lambda는 감쇠율을 조절하는 하이퍼파라미터. 최근 발화일수록 더 큰 영향을 줌.
+                    # 10분(600초)이 지나면 영향력이 약 10%로 감소(90% 감소)하는 수준입니다. exp(-0.00384 * 600) ~= 0.1
+                    decay_lambda = 0.00384
+                    weighted_context_risk += utterance_risk_score * math.exp(-decay_lambda * delta_t)
         
         # 최종 문맥 위험도 점수에 log1p를 적용하여 값의 범위를 안정화
         context_risk_feat = math.log1p(weighted_context_risk)
@@ -195,13 +197,20 @@ class ContextRiskModel(nn.Module):
         else:
             # Attention을 사용하지 않을 경우, LSTM의 마지막 은닉 상태를 사용
             pooled_dim = lstm_hidden_size * 2
-            
-        # 최종 분류기(Classifier)의 입력 차원:
-        # (언어 모델 출력 차원) + (시간 특성 차원) + (감정 특성 차원) + (문맥 위험도 특성 차원)
-        input_dim = pooled_dim + time_feat_dim + emo_feat_dim + context_risk_feat_dim
         
-        self.classifier = nn.Sequential(
-            nn.Linear(input_dim, 512), nn.ReLU(), nn.Dropout(0.2), nn.Linear(512, num_labels)
+        # 1. 문맥 위험도를 제외한 특성들로 1차 분류기를 구성합니다.
+        # (언어 모델 출력 차원) + (시간 특성 차원) + (감정 특성 차원)
+        base_input_dim = pooled_dim + time_feat_dim + emo_feat_dim
+        self.base_classifier = nn.Sequential(
+            nn.Linear(base_input_dim, 512), nn.ReLU(), nn.Dropout(0.2), nn.Linear(512, num_labels)
+        )
+
+        # 2. 문맥 위험도를 '위험도 편향(Risk Bias)'으로 변환하는 작은 네트워크를 추가합니다.
+        # 이 네트워크는 positive 점수는 낮추고(-), 나머지 위험도 점수는 높이도록(+) 학습됩니다.
+        self.risk_bias_generator = nn.Sequential(
+            nn.Linear(context_risk_feat_dim, 16),
+            nn.ReLU(),
+            nn.Linear(16, num_labels)
         )
 
     def forward(self, input_ids, attention_mask, time_feats, emo_feats, context_risk_feats):
@@ -225,11 +234,16 @@ class ContextRiskModel(nn.Module):
             # 3b. Attention 미사용 시, LSTM의 마지막 은닉 상태를 결합하여 사용
             pooled = torch.cat((h_n[-2,:,:], h_n[-1,:,:]), dim=1)
         
-        # 4. 언어 모델의 출력과 추가 특성들을 결합
-        x = torch.cat([pooled, time_feats, emo_feats, context_risk_feats], dim=-1)
-        
-        # 5. 최종 분류기를 통과시켜 각 클래스에 대한 로짓(logits)을 반환
-        return self.classifier(x)
+        # 4. 1차 분류: 문맥 위험도를 제외한 특성들로 기본 로짓(logits)을 계산
+        base_features = torch.cat([pooled, time_feats, emo_feats], dim=-1)
+        base_logits = self.base_classifier(base_features)
+
+        # 5. 위험도 편향(Risk Bias) 계산
+        # context_risk_feats가 클수록 이 편향 값의 절대값이 커지도록 학습됩니다.
+        risk_bias = self.risk_bias_generator(context_risk_feats)
+
+        # 6. 최종 로짓 = 기본 로짓 + 위험도 편향. 문맥 위험도가 높을수록 위험 클래스 점수가 가산됩니다.
+        return base_logits + risk_bias
     
     def _masked_mean_pooling(self, hidden_states, attention_mask):
         """어텐션 마스크를 고려하여 패딩 토큰을 제외하고 평균 풀링을 수행합니다."""
