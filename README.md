@@ -337,14 +337,14 @@ python run.py all
 
 | Label            | Precision | Recall | F1-Score | Support |
 | ---------------- | --------- | ------ | -------- | ------- |
-| Positive         | 1.00      | 0.98   | 0.99     | 32,111  |
-| Danger           | 0.56      | 0.79   | 0.65     | 642     |
-| Critical         | 0.62      | 0.79   | 0.69     | 150     |
-| Emergency        | 0.49      | 0.89   | 0.63     | 70      |
+| Positive         | 0.9981    | 0.9941 | 0.9961   | 32,111  |
+| Danger           | 0.8014    | 0.9050 | 0.8500   | 642     |
+| Critical         | 0.8291    | 0.8733 | 0.8506   | 150     |
+| Emergency        | 0.6075    | 0.9286 | 0.7345   | 70      |
 |                  |           |        |          |         |
-| **Accuracy**     |           |        | 0.98     | 32,973  |
-| **Macro Avg**    | 0.67      | 0.86   | 0.74     | 32,973  |
-| **Weighted Avg** | 0.98      | 0.98   | 0.98     | 32,973  |
+| **Accuracy**     |           |        | 0.9917   | 32,973  |
+| **Macro Avg**    | 0.8090    | 0.9253 | 0.8578   | 32,973  |
+| **Weighted Avg** | 0.9927    | 0.9917 | 0.9920   | 32,973  |
 
 ![위험도 분류 모델 평가 지표 이미지](./figures/label/evaluation-confusion_matrix_report_plot.png)
 

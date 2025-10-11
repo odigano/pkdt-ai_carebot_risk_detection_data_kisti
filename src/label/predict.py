@@ -103,8 +103,8 @@ def generate_evaluation_report(df, label_order, output_dir):
     y_true, y_pred = eval_df['label'], eval_df['predicted_label']
     
     # 1. Classification Report 생성 및 저장
-    report_dict = classification_report(y_true, y_pred, labels=label_order, target_names=label_order, zero_division=0, output_dict=True)
-    report_text = classification_report(y_true, y_pred, labels=label_order, target_names=label_order, zero_division=0)
+    report_dict = classification_report(y_true, y_pred, labels=label_order, target_names=label_order, digits=4, zero_division=0, output_dict=True)
+    report_text = classification_report(y_true, y_pred, labels=label_order, target_names=label_order, digits=4, zero_division=0)
     
     print("\n[Classification Report]")
     os.makedirs(output_dir, exist_ok=True)
