@@ -224,24 +224,24 @@ python run.py all
         "char_length": 32,
         "label": "positive",
         "confidence_scores": {
-            "positive": "0.9873",
-            "danger": "0.0085",
-            "critical": "0.0020",
-            "emergency": "0.0023"
+            "positive": "0.9907",
+            "danger": "0.0056",
+            "critical": "0.0029",
+            "emergency": "0.0010"
         },
         "treatment_plan": "특별한 위험 징후는 없습니다. 지속적으로 모니터링해 주세요.",
         "full_text": "오늘 너무 덥네 지금 몇 시야 조금 있다가 밥 먹어야 겠다",
         "reason": {
             "evidence": [
                 {
-                    "seq": 2,
-                    "text": "조금 있다가 밥 먹어야 겠다",
-                    "score": "0.9878"
-                },
-                {
                     "seq": 0,
                     "text": "오늘 너무 덥네",
-                    "score": "0.9873"
+                    "score": "0.9907"
+                },
+                {
+                    "seq": 1,
+                    "text": "지금 몇 시야",
+                    "score": "0.9902"
                 }
             ],
             "summary": "오늘 너무 덥다고 말하며 밥을 먹어야겠다고 함"
@@ -255,10 +255,10 @@ python run.py all
             "uttered_at": "2025-09-22T10:20:30",
             "label": "positive",
             "confidence_scores": {
-                "positive": "0.9873",
-                "danger": "0.0085",
-                "critical": "0.0020",
-                "emergency": "0.0023"
+                "positive": "0.9907",
+                "danger": "0.0056",
+                "critical": "0.0029",
+                "emergency": "0.0010"
             }
         },
         {
@@ -268,10 +268,10 @@ python run.py all
             "uttered_at": "2025-09-22T10:20:40",
             "label": "positive",
             "confidence_scores": {
-                "positive": "0.9873",
-                "danger": "0.0050",
-                "critical": "0.0046",
-                "emergency": "0.0031"
+                "positive": "0.9902",
+                "danger": "0.0027",
+                "critical": "0.0055",
+                "emergency": "0.0018"
             }
         },
         {
@@ -281,10 +281,10 @@ python run.py all
             "uttered_at": "2025-09-22T10:20:50",
             "label": "positive",
             "confidence_scores": {
-                "positive": "0.9878",
-                "danger": "0.0087",
-                "critical": "0.0024",
-                "emergency": "0.0013"
+                "positive": "0.9897",
+                "danger": "0.0041",
+                "critical": "0.0050",
+                "emergency": "0.0011"
             }
         }
     ]
@@ -338,14 +338,14 @@ python run.py all
 
 | Label            | Precision | Recall | F1-Score | Support |
 | ---------------- | --------- | ------ | -------- | ------- |
-| Positive         | 0.9992    | 0.9920 | 0.9956   | 32111   |
-| Danger           | 0.7488    | 0.9564 | 0.8399   | 642     |
-| Critical         | 0.7964    | 0.8867 | 0.8391   | 150     |
-| Emergency        | 0.6204    | 0.9571 | 0.7528   | 70      |
+| Positive         | 0.9993    | 0.9922 | 0.9957   | 32111   |
+| Danger           | 0.7590    | 0.9517 | 0.8445   | 642     |
+| Critical         | 0.7778    | 0.8867 | 0.8287   | 150     |
+| Emergency        | 0.5982    | 0.9571 | 0.7363   | 70      |
 |                  |           |        |          |         |
-| **Accuracy**     |           |        | 0.9908   | 32973   |
-| **Macro Avg**    | 0.7912    | 0.9480 | 0.8569   | 32973   |
-| **Weighted Avg** | 0.9926    | 0.9908 | 0.9914   | 32973   |
+| **Accuracy**     |           |        | 0.9909   | 32973   |
+| **Macro Avg**    | 0.7836    | 0.9469 | 0.8513   | 32973   |
+| **Weighted Avg** | 0.9927    | 0.9909 | 0.9915   | 32973   |
 
 ![위험도 분류 모델 평가 지표 이미지](./figures/label/evaluation-confusion_matrix_report_plot.png)
 

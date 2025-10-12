@@ -359,51 +359,51 @@ def run_train(args):
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(len(train_loader) * args.epochs * 0.1), num_training_steps=len(train_loader) * args.epochs)
+
     # AMP(Automatic Mixed Precision) 사용 시, 그래디언트 스케일러 초기화
-    scaler = torch.amp.GradScaler() if args.use_amp and device.type == 'cuda' else None
+    use_amp = args.use_amp and device.type == 'cuda'
+    scaler = torch.amp.GradScaler(enabled=use_amp)
 
     best_f1_score = float('-inf') # F1-score는 높을수록 좋으므로 초기값을 음의 무한대로 설정
     patience_counter = 0
 
     for epoch in range(args.epochs):
         model.train()
+        total_train_loss = 0
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{args.epochs} | Training"):
             optimizer.zero_grad()
+
             labels = batch.pop("labels").to(device)
             inputs = {k: v.to(device) for k, v in batch.items()}
             
-            if scaler: # AMP 사용
-                with torch.amp.autocast(device_type=device.type):
-                    loss = loss_fct(model(**inputs), labels)
-                scaler.scale(loss).backward()
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-            else: # AMP 미사용
-                loss = loss_fct(model(**inputs), labels)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                optimizer.step()
+            with torch.amp.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
+                logits = model(**inputs)
+                loss = loss_fct(logits, labels)
+
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer) # clip_grad_norm_ 전에 unscale 필요
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            
             scheduler.step()
+            total_train_loss += loss.item()
 
         # --- 검증 단계 ---
         model.eval()
         total_eval_loss = 0
         all_preds = []
         all_labels = []
+        print(f"Epoch {epoch+1} | Average Training Loss: {total_train_loss / len(train_loader):.4f}")
         for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{args.epochs} | Validation"):
             with torch.no_grad():
                 labels = batch.pop("labels").to(device)
                 inputs = {k: v.to(device) for k, v in batch.items()}
                 
-                if scaler:
-                    with torch.amp.autocast(device_type=device.type):
-                        logits = model(**inputs)
-                else:
+                with torch.amp.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
                     logits = model(**inputs)
-                
-                loss = loss_fct(logits, labels)
+                    loss = loss_fct(logits, labels)
+
                 total_eval_loss += loss.item()
 
                 preds = torch.argmax(logits, dim=1)
