@@ -88,11 +88,11 @@ pip install -r requirements.txt
 
 ##### 위험도 분류 모델
 
--   ~~[TODO label_model]()~~
+-   [label_model](https://drive.google.com/file/d/1chWk_-YXHHQ1tnFEfyUdAiqE4KUyeBpG/view?usp=sharing)
 
 ##### 요약 모델
 
--   ~~[TODO summary_model]()~~
+-   [summary_model](https://drive.google.com/file/d/1sCfu7a51lY7cCukJp9gFhirREzApL6SG/view?usp=sharing)
 
 ## 실행
 
