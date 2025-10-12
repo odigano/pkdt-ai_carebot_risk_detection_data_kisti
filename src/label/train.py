@@ -36,7 +36,7 @@ def load_and_parse_csv(path: str) -> pd.DataFrame:
     """
     df = pd.read_csv(path)
     # CSV에 리스트 형태로 저장된 컬럼 목록
-    list_columns = ['input_ids', 'attention_mask', 'seq_texts', 'seq_delta_t', 'seq_hours', 'seq_emo_vectors']
+    list_columns = ['input_ids', 'attention_mask', 'seq_texts', 'seq_delta_t', 'seq_hours', 'seq_emo_vectors', 'seq_labels']
     for col in list_columns:
         if col in df.columns:
             # progress_apply를 사용하여 파싱 진행 상황을 시각적으로 보여줍니다.
@@ -60,13 +60,8 @@ class ContextDataset(Dataset):
         self.label_map = label_map
         # 감정 특성 관련 컬럼 이름을 미리 추출하여 사용합니다.
         self.emo_cols = [c for c in df.columns if c.startswith("emo_")]
-        # 문맥 위험도 계산에 사용할 감정 점수 컬럼의 인덱스를 미리 찾아둡니다.
-        self.emo_score_indices = {
-            'emergency': self.emo_cols.index('emo_emergency_score') if 'emo_emergency_score' in self.emo_cols else None,
-            'critical': self.emo_cols.index('emo_critical_score') if 'emo_critical_score' in self.emo_cols else None,
-            'danger': self.emo_cols.index('emo_danger_score') if 'emo_danger_score' in self.emo_cols else None,
-        }
-
+        # 레이블별 위험도 점수를 정의합니다.
+        self.risk_scores_by_label = {label: i for i, label in enumerate(LABEL_ORDER)}
     def __len__(self):
         return len(self.df)
 
@@ -87,6 +82,9 @@ class ContextDataset(Dataset):
         attention_mask = row["attention_mask"]
 
         # 2. 시간 관련 특성
+        delta_t_val = row["delta_t"]
+        last_delta = math.log1p(delta_t_val)
+        is_session_start = 1.0 if delta_t_val == 0 else 0.0
         last_hour = row["hour"]
         # 시간(hour)을 순환적인 특성으로 변환하여 23시와 0시가 가깝다는 것을 표현
         hour_sin = math.sin(2 * math.pi * last_hour / 24)
@@ -98,22 +96,19 @@ class ContextDataset(Dataset):
         # 4. 문맥 기반 위험도 특성 (Contextual Risk Feature)
         # 이전 대화들의 위험도와 시간 경과를 함께 고려한 특성입니다.
         # 최근에 위험한 발화가 많았을수록 높은 값을 가집니다.
-        seq_emo_vectors = row["seq_emo_vectors"]
+        seq_labels = row["seq_labels"]
         seq_delta_t = row["seq_delta_t"]
         
         weighted_context_risk = 0.0
         # 문맥에 2개 이상의 발화가 있을 때만 계산 (현재 발화 제외)
-        if len(seq_emo_vectors) > 1:
+        if len(seq_labels) > 1:
             # 현재 발화를 제외한 이전 발화들에 대해 반복
-            for i in range(len(seq_emo_vectors) - 1):
-                emo_vec_context = seq_emo_vectors[i]
+            for i in range(len(seq_labels) - 1):
+                label = seq_labels[i]
                 delta_t = seq_delta_t[i+1]  # 해당 발화와 다음 발화 사이의 시간 간격
                 
-                # 각 위험도 레벨의 감정 점수에 가중치를 부여하여 합산
-                utterance_risk_score = 0
-                if self.emo_score_indices['emergency'] is not None: utterance_risk_score += emo_vec_context[self.emo_score_indices['emergency']] * 3.0
-                if self.emo_score_indices['critical'] is not None: utterance_risk_score += emo_vec_context[self.emo_score_indices['critical']] * 2.0
-                if self.emo_score_indices['danger'] is not None: utterance_risk_score += emo_vec_context[self.emo_score_indices['danger']] * 1.0
+                # 이전 발화의 실제 레이블을 기반으로 위험 점수를 가져옵니다.
+                utterance_risk_score = self.risk_scores_by_label.get(label, 0)
                 
                 # 위험 점수가 0보다 클 경우, 시간 경과(delta_t)에 따라 지수적으로 점수를 감쇠시킴
                 if utterance_risk_score > 0:
@@ -129,7 +124,7 @@ class ContextDataset(Dataset):
         item = {
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
-            "time_feats": torch.tensor([hour_sin, hour_cos], dtype=torch.float),
+            "time_feats": torch.tensor([last_delta, hour_sin, hour_cos, is_session_start], dtype=torch.float),
             "emo_feats": torch.tensor(emo_vec, dtype=torch.float),
             "context_risk_feats": torch.tensor([context_risk_feat], dtype=torch.float),
         }
@@ -174,7 +169,7 @@ class ContextRiskModel(nn.Module):
     문맥을 고려한 위험도 분류 모델.
     사전 학습된 언어 모델(Encoder)과 LSTM, 추가 특성을 결합한 하이브리드 구조.
     """
-    def __init__(self, encoder_name: str, emo_feat_dim: int, time_feat_dim: int = 2, num_labels: int = 4, lstm_hidden_size: int = 256, context_risk_feat_dim: int = 1, use_attention: bool = True):
+    def __init__(self, encoder_name: str, emo_feat_dim: int, time_feat_dim: int = 4, num_labels: int = 4, lstm_hidden_size: int = 256, context_risk_feat_dim: int = 1, use_attention: bool = True):
         super().__init__()
         # 모델의 설정을 저장하여 나중에 모델을 불러올 때 동일한 구조를 재현할 수 있도록 함
         self.config = {
