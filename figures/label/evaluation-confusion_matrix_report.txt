@@ -1,10 +1,10 @@
               precision    recall  f1-score   support
 
-    positive     0.9993    0.9922    0.9957     32111
-      danger     0.7590    0.9517    0.8445       642
-    critical     0.7778    0.8867    0.8287       150
-   emergency     0.5982    0.9571    0.7363        70
+    positive     0.9999    0.9890    0.9944     32111
+      danger     0.6987    0.9751    0.8140       642
+    critical     0.6763    0.9333    0.7843       150
+   emergency     0.6147    0.9571    0.7486        70
 
-    accuracy                         0.9909     32973
-   macro avg     0.7836    0.9469    0.8513     32973
-weighted avg     0.9927    0.9909    0.9915     32973
+    accuracy                         0.9884     32973
+   macro avg     0.7474    0.9636    0.8353     32973
+weighted avg     0.9918    0.9884    0.9894     32973

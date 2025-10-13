@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import math
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
@@ -14,7 +15,7 @@ import ast
 
 # train.py에서 모델, 데이터셋 등 필요한 클래스와 함수를 임포트합니다.
 # 이를 통해 학습과 예측 과정에서 동일한 데이터 처리 및 모델 구조를 보장합니다.
-from train import ContextRiskModel, ContextDataset, collate_fn, LABEL_ORDER
+from train import ContextRiskModel, ContextDataset, LABEL_ORDER
 
 # tqdm.pandas()를 호출하여 progress_apply를 활성화합니다.
 tqdm.pandas(desc="Parsing list-like columns")
@@ -51,29 +52,67 @@ def setup_matplotlib_font():
     except Exception as e:
         print(f'Warning: Could not set Korean font for plots. Error: {e}', file=sys.stderr)
 
-def run_predictions(model, dataloader, device):
+def run_predictions(model, dataset, device):
     """
-    모델 예측을 실행하고, 각 샘플에 대한 예측 라벨과 해당 라벨의 확률을 반환합니다.
+    모델 예측을 세션 단위로 순차적으로 실행합니다.
+    이전 발화의 예측 결과를 다음 발화의 '문맥 위험도' 특성으로 사용하여,
+    학습 시와 유사한 환경에서 예측을 수행합니다.
 
     Args:
         model (nn.Module): 학습된 모델.
-        dataloader (DataLoader): 예측할 데이터가 포함된 DataLoader.
+        dataset (ContextDataset): 예측할 데이터가 포함된 Dataset.
         device (torch.device): 연산을 수행할 장치 (e.g., 'cuda' or 'cpu').
 
     Returns:
         Tuple[List[int], List[float]]: (예측된 라벨 ID 리스트, 예측된 라벨의 확률 리스트).
     """
     model.eval() # 모델을 평가 모드로 설정
+    
+    # 위험도 점수 텐서 (positive:0, danger:1, critical:2, emergency:3)
+    risk_scores = torch.tensor([i for i, _ in enumerate(LABEL_ORDER)], dtype=torch.float, device=device)
+    decay_lambda = 0.00384 # 10분(600초) 지나면 영향력 10%
+
+    # 세션별 과거 위험도 누적을 위한 딕셔너리
+    session_context_risks = {}
     all_preds, all_top_probs = [], []
+
     with torch.no_grad(): # 그래디언트 계산 비활성화
-        for batch in tqdm(dataloader, desc="Predicting"):
-            # 평가/추론 시에는 라벨이 없을 수 있으므로, 배치에서 제거합니다.
-            batch.pop("labels", None) 
-            inputs = {k: v.to(device) for k, v in batch.items()}
+        for i in tqdm(range(len(dataset)), desc="Predicting"):
+            item = dataset[i]
+            inputs = {k: v.unsqueeze(0).to(device) for k, v in item.items() if k != 'label'}
+
+            # --- 동적 문맥 위험도 계산 ---
+            row = dataset.df.iloc[i]
+            session_key = (row["doll_id"], row["session_id"])
+
+            # 세션의 첫 발화인 경우, 문맥 위험도는 0으로 초기화
+            if inputs["time_feats"][0, 3].item() == 1.0: # is_session_start
+                session_context_risks[session_key] = 0.0
             
+            # 현재 발화의 문맥 위험도 특성을 동적으로 계산된 값으로 교체
+            current_risk = session_context_risks.get(session_key, 0.0)
+            inputs["context_risk_feats"] = torch.tensor([[math.log1p(current_risk)]], dtype=torch.float, device=device)
+            
+            # --- 모델 예측 ---
             logits = model(**inputs)
             probs = torch.softmax(logits, dim=-1) # 로짓을 확률로 변환
             top_probs, preds = torch.max(probs, dim=-1) # 가장 높은 확률과 해당 인덱스(예측 라벨)를 추출
+
+            # --- 다음 스텝을 위한 문맥 위험도 업데이트 ---
+            # 학습 시의 로직과 동일하게, 이전 누적 위험도에 시간 감쇠를 먼저 적용합니다.
+            delta_t = torch.exp(inputs["time_feats"][0, 0]) - 1 # log1p 역변환
+            decay_factor = math.exp(-decay_lambda * delta_t.item())
+            decayed_risk = current_risk * decay_factor
+
+            # 모델의 예측 확률에 위험도 점수를 곱하여 현재 발화의 '기대 위험도'를 계산합니다.
+            predicted_risk_score = (probs * risk_scores).sum(dim=-1).item()
+            
+            # 학습 시의 `if utterance_risk_score > 0:` 조건을 모방합니다.
+            # 예측된 위험도 점수가 임계값(e.g., 0.05)보다 클 때만 누적 위험도에 더합니다.
+            if predicted_risk_score > 0.05:
+                session_context_risks[session_key] = decayed_risk + predicted_risk_score
+            else:
+                session_context_risks[session_key] = decayed_risk
             
             all_preds.extend(preds.cpu().numpy().tolist())
             all_top_probs.extend(top_probs.cpu().numpy().tolist())
@@ -184,15 +223,8 @@ def run_predict(args):
     label_map = {label: i for i, label in enumerate(LABEL_ORDER)}
     dataset = ContextDataset(df, label_map)
     
-    pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
-    dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=False,
-        collate_fn=lambda b: collate_fn(b, pad_token_id),
-        num_workers=args.num_workers, pin_memory=(device.type == 'cuda')
-    )
-
     # 모델 예측 실행
-    preds, top_probs = run_predictions(model, dataloader, device)
+    preds, top_probs = run_predictions(model, dataset, device)
     
     # 예측 결과를 원본 DataFrame에 추가
     df['predicted_label_id'] = preds
