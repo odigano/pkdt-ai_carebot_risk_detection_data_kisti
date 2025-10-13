@@ -31,7 +31,7 @@ def load_and_parse_csv(path: str) -> pd.DataFrame:
         pd.DataFrame: 리스트 컬럼이 파싱된 DataFrame.
     """
     df = pd.read_csv(path)
-    list_columns = ['input_ids', 'attention_mask', 'seq_texts', 'seq_delta_t', 'seq_hours', 'seq_emo_vectors']
+    list_columns = ['input_ids', 'attention_mask', 'seq_labels', 'seq_texts', 'seq_delta_t', 'seq_hours', 'seq_emo_vectors']
     for col in list_columns:
         if col in df.columns:
             df[col] = df[col].progress_apply(ast.literal_eval)
