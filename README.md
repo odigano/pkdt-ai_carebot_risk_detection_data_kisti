@@ -88,7 +88,7 @@ pip install -r requirements.txt
 
 ##### 위험도 분류 모델
 
--   [label_model](https://drive.google.com/file/d/1chWk_-YXHHQ1tnFEfyUdAiqE4KUyeBpG/view?usp=sharing)
+-   [label_model](https://drive.google.com/file/d/12hx0mJVSETpHN93Xw85iAXxG5IBao6KC/view?usp=sharing)
 
 ##### 요약 모델
 
