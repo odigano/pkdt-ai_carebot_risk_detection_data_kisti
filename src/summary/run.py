@@ -7,7 +7,7 @@ from argparse import Namespace
 # 전체 파이프라인의 진입점(entrypoint)으로 사용할 수 있습니다.
 from preprocess import run_preprocess, parser as preprocess_parser
 from train import run_train, parser as train_parser
-from predict import run_predict, parser as predict_parser
+from evaluation import run_evaluate, parser as evaluate_parser
 
 def run_all(args):
     """
@@ -52,14 +52,12 @@ def run_all(args):
     predict_args = Namespace(
         model_path=args.train_output_dir, # 학습된 모델 경로를 평가 모델 경로로 사용
         val_csv_path=os.path.join(args.preprocess_output_dir, "val_data.csv"), # 전처리된 검증 데이터셋 사용
-        mode='evaluate',
-        text=None,
         sbert_model=args.sbert_model,
         output_dir=args.eval_output_dir,
         eval_batch_size=args.eval_batch_size,
         max_input_length=args.max_input_length
     )
-    run_predict(predict_args)
+    run_evaluate(predict_args)
     print("--- Evaluation Complete ---")
 
 def main():
@@ -78,7 +76,7 @@ def main():
                                                                         '  all         - 전체 파이프라인 (전처리, 학습, 평가) 실행\n'
                                                                         '  preprocess  - 데이터 전처리만 실행\n'
                                                                         '  train       - 모델 학습만 실행\n'
-                                                                        '  predict     - 모델 예측 및 평가만 실행')
+                                                                        '  evaluate    - 모델 평가만 실행')
 
     # --- 'all' 커맨드 파서 정의 ---
     # 'all' 커맨드는 모든 파이프라인을 실행하며, 모든 단계의 인자를 포함합니다.
@@ -95,12 +93,12 @@ def main():
     all_parser.add_argument_group('Training Arguments')
     all_parser.add_argument("--train_output_dir", type=str, default="../../model/summary", help="학습된 모델이 저장될 디렉토리")
     all_parser.add_argument("--model_name", type=str, default="paust/pko-t5-small", help="사전 학습된 모델 이름 (토크나이저 및 모델 로드에 사용)")
-    all_parser.add_argument("--epochs", type=int, default=10, help="총 학습 에폭 수")
+    all_parser.add_argument("--epochs", type=int, default=5, help="총 학습 에폭 수")
     all_parser.add_argument("--train_batch_size", type=int, default=4, help="학습용 배치 크기")
     all_parser.add_argument("--eval_batch_size", type=int, default=4, help="평가용 배치 크기")
     all_parser.add_argument("--warmup_steps", type=int, default=1000, help="학습률 스케줄러의 워밍업 스텝 수")
     all_parser.add_argument("--weight_decay", type=float, default=0.005, help="가중치 감쇠(Weight Decay) 값")
-    all_parser.add_argument("--early_stopping_patience", type=int, default=5, help="조기 종료 patience")
+    all_parser.add_argument("--early_stopping_patience", type=int, default=3, help="조기 종료 patience")
 
     all_parser.add_argument_group('Prediction/Evaluation Arguments')
     all_parser.add_argument("--eval_output_dir", type=str, default="../../figures/summary", help="평가 결과가 저장될 디렉토리")
@@ -114,7 +112,7 @@ def main():
     # 이를 통해 인자 정의의 중복을 피하고 코드를 간결하게 유지할 수 있습니다.
     subparsers.add_parser('preprocess', help='데이터 전처리만 실행합니다.', parents=[preprocess_parser], add_help=False).set_defaults(func=run_preprocess)
     subparsers.add_parser('train', help='모델 학습만 실행합니다.', parents=[train_parser], add_help=False).set_defaults(func=run_train)
-    subparsers.add_parser('predict', help='학습된 모델의 평가만 실행합니다.', parents=[predict_parser], add_help=False).set_defaults(func=run_predict)
+    subparsers.add_parser('evaluate', help='학습된 모델의 평가만 실행합니다.', parents=[evaluate_parser], add_help=False).set_defaults(func=run_evaluate)
 
     # 커맨드 라인에서 받은 인자를 파싱합니다.
     args = parser.parse_args()

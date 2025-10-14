@@ -5,7 +5,7 @@ from argparse import Namespace
 # 이를 통해 각 스크립트의 인자 설정을 재사용할 수 있습니다.
 from preprocess import run_preprocess, parser as preprocess_parser
 from train import run_train, parser as train_parser
-from predict import run_predict, parser as predict_parser
+from evaluation import run_evaluate, parser as evaluate_parser
 
 def run_all(args: Namespace):
     """
@@ -56,12 +56,11 @@ def run_all(args: Namespace):
         val_preprocessed_path=args.val_preprocessed_path,
         model_dir=args.model_output_dir,
         output_dir=args.eval_output_dir,
-        mode='evaluate', # 'all' 파이프라인에서는 항상 평가 모드로 실행
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         force_cpu=args.force_cpu
     )
-    run_predict(predict_args)
+    run_evaluate(predict_args)
     print("--- Evaluation Complete ---")
 
 def main():
@@ -128,7 +127,7 @@ def main():
     # 이를 통해 인자 정의의 중복을 피하고 코드를 간결하게 유지할 수 있습니다.
     subparsers.add_parser('preprocess', help='데이터 전처리만 실행합니다.', parents=[preprocess_parser], add_help=False).set_defaults(func=run_preprocess)
     subparsers.add_parser('train', help='모델 학습만 실행합니다.', parents=[train_parser], add_help=False).set_defaults(func=run_train)
-    subparsers.add_parser('predict', help='학습된 모델의 평가만 실행합니다.', parents=[predict_parser], add_help=False).set_defaults(func=run_predict)
+    subparsers.add_parser('evaluate', help='학습된 모델의 평가만 실행합니다.', parents=[evaluate_parser], add_help=False).set_defaults(func=run_evaluate)
 
     # 커맨드 라인에서 받은 인자를 파싱합니다.
     args = parser.parse_args()

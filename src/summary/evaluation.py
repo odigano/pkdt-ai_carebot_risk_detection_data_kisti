@@ -4,7 +4,7 @@ import torch
 import sys
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt # matplotlib 폰트 설정은 batch_evaluate 함수 내부로 이동
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 from transformers import T5ForConditionalGeneration, T5TokenizerFast, DataCollatorWithPadding
 from torch.utils.data import DataLoader, Dataset
@@ -391,31 +391,20 @@ def batch_evaluate(model: T5ForConditionalGeneration, tokenizer: T5TokenizerFast
 
     print(f"Results saved successfully to {results_txt_path}, {results_img_path}, and {predictions_csv_path}")
 
-def run_predict(args: Namespace):
+def run_evaluate(args: Namespace):
     """
-    메인 예측/평가 함수.
-    'mode' 인자에 따라 단일 텍스트 요약 또는 데이터셋 전체 평가를 수행합니다.
+    메인 평가 함수.
+    데이터셋 전체 평가를 수행합니다.
     """
     model, tokenizer = load_model_and_tokenizer(args.model_path)
-
-    # 'inference' 모드: 단일 텍스트에 대한 요약 생성 및 출력
-    if args.mode == 'inference':
-        if not args.text:
-            raise ValueError("Inference mode requires --text argument.")
-        summary = generate_summary(model, tokenizer, args.text)
-        print("--- Generated Summary ---")
-        print(summary)
-    # 'evaluate' 모드: 검증 데이터셋에 대한 종합적인 성능 평가 수행
-    elif args.mode == 'evaluate':
-        batch_evaluate(model, tokenizer, args)
+    # 검증 데이터셋에 대한 종합적인 성능 평가 수행
+    batch_evaluate(model, tokenizer, args)
 
 # --- 스크립트 실행을 위한 ArgumentParser 설정 ---
-parser = argparse.ArgumentParser(description="학습된 T5 모델로 추론 및 종합 평가를 수행합니다.")
+parser = argparse.ArgumentParser(description="학습된 T5 모델로 종합 평가를 수행합니다.")
 
 parser.add_argument("--model_path", type=str, default="../../model/summary", help="파인튜닝된 모델이 저장된 경로")
 parser.add_argument("--val_csv_path", type=str, default="../../data/summary/val_data.csv", help="평가에 사용할 검증 데이터셋 CSV 파일 경로")
-parser.add_argument("--mode", type=str, choices=['inference', 'evaluate'], default='evaluate', help="'inference' (단일 텍스트 요약) 또는 'evaluate' (데이터셋 종합 평가) 모드 선택")
-parser.add_argument("--text", type=str, help="요약할 텍스트 (inference 모드에서 사용)")
 parser.add_argument("--sbert_model", type=str, default="BM-K/KoSimCSE-roberta-multitask", help="SBERT 유사도 계산에 사용할 모델 이름")
 parser.add_argument("--eval_batch_size", type=int, default=8, help="평가 시 사용할 배치 크기")
 parser.add_argument("--max_input_length", type=int, default=1024, help="입력 텍스트의 최대 토큰 길이")
@@ -423,4 +412,4 @@ parser.add_argument("--output_dir", type=str, default="../../figures/summary", h
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    run_predict(args)
+    run_evaluate(args)

@@ -129,10 +129,9 @@ dmypy.json
 .pyre/
 
 # Custom
+data/
 src/label/__pycache__/
 src/summary/__pycache__/
-data/label/
-data/summary/
 model/label/
 model/summary/
 figures/label/evaluation-session_predictions.csv

@@ -207,14 +207,13 @@ def generate_session_summary(df, label_order, output_dir):
     session_summary.to_csv(output_path, index=False, encoding='utf-8')
     print(f"Session-level summary saved to: '{output_path}'")
 
-def run_predict(args):
+def run_evaluate(args):
     """메인 평가/추론 파이프라인을 실행합니다."""
     setup_matplotlib_font()
     device = torch.device("cuda" if torch.cuda.is_available() and not args.force_cpu else "cpu")
     print(f"Using device: {device}")
 
     print(f"Loading model from: {args.model_dir}")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True)
     model = ContextRiskModel.from_pretrained(args.model_dir).to(device)
 
     print(f"Loading and parsing data from: {args.val_preprocessed_path}...")
@@ -237,21 +236,19 @@ def run_predict(args):
     df.to_csv(utterance_output_path, index=False, encoding='utf-8')
     print(f"\nUtterance-level predictions saved to: '{utterance_output_path}'")
 
-    # 평가 모드일 경우, 추가적인 리포트 및 요약 생성
-    if args.mode == 'evaluate':
-        generate_evaluation_report(df, LABEL_ORDER, args.output_dir)
-        generate_session_summary(df, LABEL_ORDER, args.output_dir)
+    # 리포트 및 요약 생성
+    generate_evaluation_report(df, LABEL_ORDER, args.output_dir)
+    generate_session_summary(df, LABEL_ORDER, args.output_dir)
 
 # 스크립트 실행을 위한 ArgumentParser 설정
-parser = argparse.ArgumentParser(description="학습된 ContextRiskModel을 평가하거나 추론하는 스크립트")
+parser = argparse.ArgumentParser(description="학습된 ContextRiskModel을 평가하는 스크립트")
 parser.add_argument("--val_preprocessed_path", type=str, default="../../data/label/preprocessed_val_data.csv", help="전처리된 검증 데이터 경로 (CSV)")
 parser.add_argument("--model_dir", type=str, default="../../model/label", help="학습된 모델(pytorch_model.bin, config.json 등)이 저장된 디렉토리")
 parser.add_argument("--output_dir", type=str, default="../../figures/label", help="평가 결과(CSV, 이미지 등)를 저장할 디렉토리")
-parser.add_argument("--mode", type=str, choices=['inference', 'evaluate'], default='evaluate', help="'inference': 단순 추론, 'evaluate': 정답과 비교하여 성능 평가")
 parser.add_argument("--batch_size", type=int, default=64, help="예측 시 사용할 배치 크기")
 parser.add_argument("--num_workers", type=int, default=0, help="DataLoader를 위한 워커 수")
 parser.add_argument("--force_cpu", action="store_true", help="CUDA 사용 가능 시에도 CPU를 강제로 사용")
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    run_predict(args)
+    run_evaluate(args)

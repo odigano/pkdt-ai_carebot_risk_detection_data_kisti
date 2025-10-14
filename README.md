@@ -29,18 +29,19 @@
 ├── demo/                  # 테스트 실행 데모 영상
 ├── figures/               # 모델의 설명, 실험 결과 설명에 사용된 그림 및 결과 파일
 ├── model/                 # 학습된 모델 파일
-├── notebooks/             # 노트북 파일 (.ipynb)
 ├── scripts/               # 스크립트 파일 (미사용)
+├── notebooks/             # 노트북 파일 (.ipynb)
 ├── src/                   # 파이선 파일 (.py)
+│   ├── predict.py         # 예측 코드
 │   ├── label/
 │   │   ├── preprocess.py  # 위험도 분류 모델 전처리 코드
 │   │   ├── train.py       # 위험도 분류 모델 학습 코드
-│   │   ├── predict.py     # 위험도 분류 모델 예측 및 평가 코드
+│   │   ├── evaluation.py  # 위험도 분류 모델 평가 코드
 │   │   └── run.py         # 위험도 분류 모델 실행 코드
 │   └── summary/
 │       ├── preprocess.py  # 요약 모델 전처리 코드
 │       ├── train.py       # 요약 모델 학습 코드
-│       ├── predict.py     # 요약 모델 예측 및 평가 코드
+│       ├── evaluation.py  # 요약 모델 평가 코드
 │       └── run.py         # 요약 모델 모델 실행 코드
 ├── requirements.txt
 └── README.md
@@ -88,128 +89,64 @@ pip install -r requirements.txt
 
 ##### 위험도 분류 모델
 
--   [label_model](https://drive.google.com/file/d/12hx0mJVSETpHN93Xw85iAXxG5IBao6KC/view?usp=sharing)
+-   [label_model](https://drive.google.com/file/d/1k-kUJ2VDCJYR5nvihfhwjfgZa2arTCZy/view?usp=sharing)
 
 ##### 요약 모델
 
--   [summary_model](https://drive.google.com/file/d/1sCfu7a51lY7cCukJp9gFhirREzApL6SG/view?usp=sharing)
+-   [summary_model](https://drive.google.com/file/d/1LTsyHJ29-r0CF1P1_uCNYK9MIXjvVcnE/view?usp=sharing)
 
 ## 실행
 
-위험도 분류 모델 및 대화 요약 모델 소스 코드는 유사한 형태로 실행 가능합니다.
+### 예측
 
 ```bash
-cd ./src/label # 또는 cd ./src/summary
+cd src
+python predict.py
+
+# --input_csv 인자를 사용하여 불러올 CSV 파일을 지정할 수 있습니다.
+# 생략할 경우 기본 경로는 ../data/prediction/dialogue.csv 사용합니다.
+python predict.py --input_csv ../dialogue_test.csv
 ```
+
+불러올 CSV 파일 형태는 다음과 같아야 합니다.
+
+| doll_id | text         | uttered_at          |
+|---------|--------------|---------------------|
+| 1       | 오늘 너무 덥네 | 2025-09-22 10:20:30 |
+| 1       | 지금 몇 시야   | 2025-09-22 10:20:40 |
+
+### 단계별 실행
+
+위험도 분류 모델 및 대화 요약 모델 소스 코드는 유사한 형태로 실행 가능합니다.
 
 세부 파라미터 및 실행 결과는 다르니 해당 소스 코드 또는 --help 옵션을 참고해주세요.
 
-### 단계별 실행
+```bash
+cd src/label # 또는 cd src/summary
+```
 
 #### 전처리
 
 ```bash
 python preprocess.py
-
-# usage: preprocess.py [--input_csv INPUT_CSV] [--output_path OUTPUT_PATH] [--tokenizer_name TOKENIZER_NAME]
-#                      [--k_context K_CONTEXT] [--session_gap_seconds SESSION_GAP_SECONDS] [--max_seq_len MAX_SEQ_LEN]
-# options:
-#   --input_csv INPUT_CSV
-#                         원본 데이터 CSV 파일 경로
-#   --output_path OUTPUT_PATH
-#                         전처리된 데이터(CSV)가 저장될 경로
-#   --tokenizer_name TOKENIZER_NAME
-#                         토크나이저로 사용할 모델 이름
-#   --k_context K_CONTEXT
-#                         문맥으로 사용할 이전 발화의 수
-#   --session_gap_seconds SESSION_GAP_SECONDS
-#                         새로운 세션을 정의하기 위한 시간 간격(초)
-#   --max_seq_len MAX_SEQ_LEN
-#                         입력 시퀀스의 최대 토큰 길이
 ```
 
 #### 학습
 
 ```bash
 python train.py
-
-# usage: train.py [--train_preprocessed_path TRAIN_PREPROCESSED_PATH] [--val_preprocessed_path VAL_PREPROCESSED_PATH]
-#                 [--output_dir OUTPUT_DIR] [--tokenizer_name TOKENIZER_NAME] [--encoder_name ENCODER_NAME] [--epochs EPOCHS]
-#                 [--batch_size BATCH_SIZE] [--learning_rate LEARNING_RATE] [--lstm_hidden_size LSTM_HIDDEN_SIZE]
-#                 [--num_workers NUM_WORKERS] [--early_stopping_patience EARLY_STOPPING_PATIENCE] [--use_amp] [--force_cpu]
-#                 [--use_attention | --no-use_attention]
-# options:
-#   --train_preprocessed_path TRAIN_PREPROCESSED_PATH
-#                         전처리된 학습 데이터 파일 경로 (CSV)
-#   --val_preprocessed_path VAL_PREPROCESSED_PATH
-#                         전처리된 검증 데이터 파일 경로 (CSV)
-#   --output_dir OUTPUT_DIR
-#                         학습된 모델이 저장될 디렉토리
-#   --tokenizer_name TOKENIZER_NAME
-#                         사전 학습된 토크나이저 이름
-#   --encoder_name ENCODER_NAME
-#                         사전 학습된 인코더 모델 이름
-#   --epochs EPOCHS       총 학습 에폭 수
-#   --batch_size BATCH_SIZE
-#                         배치 크기
-#   --learning_rate LEARNING_RATE
-#                         학습률
-#   --lstm_hidden_size LSTM_HIDDEN_SIZE
-#                         LSTM 은닉층 크기
-#   --num_workers NUM_WORKERS
-#                         DataLoader를 위한 워커 수
-#   --early_stopping_patience EARLY_STOPPING_PATIENCE
-#                         조기 중단을 위한 patience 값
-#   --use_amp             Automatic Mixed Precision 사용 여부
-#   --force_cpu           CUDA 사용 가능 시에도 CPU 강제 사용
-#   --use_attention, --no-use_attention
-#                         모델에 어텐션 메커니즘 사용 여부
 ```
 
-#### 예측 및 평가
+#### 평가
 
 ```bash
-# 데이터셋 전체 평가
-python predict.py
-
-# 단일 텍스트 요약 (요약 모델의 경우)
-python predict.py --mode inference --text "요약할 텍스트입니다."
-
-# usage: predict.py [--val_preprocessed_path VAL_PREPROCESSED_PATH] [--model_dir MODEL_DIR] [--output_dir OUTPUT_DIR]
-#                   [--mode {inference,evaluate}] [--batch_size BATCH_SIZE] [--num_workers NUM_WORKERS] [--force_cpu]
-# options:
-#   --val_preprocessed_path VAL_PREPROCESSED_PATH
-#                         전처리된 검증 데이터 경로 (CSV)
-#   --model_dir MODEL_DIR
-#                         학습된 모델(pytorch_model.bin, config.json 등)이 저장된 디렉토리
-#   --output_dir OUTPUT_DIR
-#                         평가 결과(CSV, 이미지 등)를 저장할 디렉토리
-#   --mode {inference,evaluate}
-#                         'inference': 단순 추론, 'evaluate': 정답과 비교하여 성능 평가
-#   --batch_size BATCH_SIZE
-#                         예측 시 사용할 배치 크기
-#   --num_workers NUM_WORKERS
-#                         DataLoader를 위한 워커 수
-#   --force_cpu           CUDA 사용 가능 시에도 CPU를 강제로 사용
+python evaluation.py
 ```
 
 ### 전체 파이프라인 실행
 
 ```bash
 python run.py all
-
-# usage: run.py {all,preprocess,train,predict} ...
-# positional arguments:
-#   {all,preprocess,train,predict}
-#                         실행할 명령어:
-#                           all         - 전체 파이프라인 (전처리, 학습, 평가) 실행
-#                           preprocess  - 데이터 전처리만 실행
-#                           train       - 모델 학습만 실행
-#                           predict     - 모델 예측 및 평가만 실행
-#     all                 전체 파이프라인(전처리, 학습, 평가)을 실행합니다.
-#     preprocess          데이터 전처리만 실행합니다.
-#     train               모델 학습만 실행합니다.
-#     predict             학습된 모델의 평가만 실행합니다.
 ```
 
 ## 모델 설명
@@ -224,24 +161,24 @@ python run.py all
         "char_length": 32,
         "label": "positive",
         "confidence_scores": {
-            "positive": "0.9937",
-            "danger": "0.0042",
-            "critical": "0.0015",
-            "emergency": "0.0008"
+            "positive": "0.9897",
+            "danger": "0.0079",
+            "critical": "0.0008",
+            "emergency": "0.0017"
         },
         "treatment_plan": "특별한 위험 징후는 없습니다. 지속적으로 모니터링해 주세요.",
         "full_text": "오늘 너무 덥네 지금 몇 시야 조금 있다가 밥 먹어야 겠다",
         "reason": {
             "evidence": [
                 {
-                    "seq": 2,
-                    "text": "조금 있다가 밥 먹어야 겠다",
-                    "score": "0.9946"
-                },
-                {
                     "seq": 1,
                     "text": "지금 몇 시야",
-                    "score": "0.9941"
+                    "score": "0.9937"
+                },
+                {
+                    "seq": 2,
+                    "text": "조금 있다가 밥 먹어야 겠다",
+                    "score": "0.9937"
                 }
             ],
             "summary": "오늘 너무 덥다고 말하며 밥을 먹어야겠다고 함"
@@ -255,10 +192,10 @@ python run.py all
             "uttered_at": "2025-09-22T10:20:30",
             "label": "positive",
             "confidence_scores": {
-                "positive": "0.9937",
-                "danger": "0.0042",
-                "critical": "0.0015",
-                "emergency": "0.0008"
+                "positive": "0.9897",
+                "danger": "0.0079",
+                "critical": "0.0008",
+                "emergency": "0.0017"
             }
         },
         {
@@ -268,10 +205,10 @@ python run.py all
             "uttered_at": "2025-09-22T10:20:40",
             "label": "positive",
             "confidence_scores": {
-                "positive": "0.9941",
-                "danger": "0.0033",
-                "critical": "0.0016",
-                "emergency": "0.0007"
+                "positive": "0.9937",
+                "danger": "0.0030",
+                "critical": "0.0012",
+                "emergency": "0.0021"
             }
         },
         {
@@ -281,10 +218,10 @@ python run.py all
             "uttered_at": "2025-09-22T10:20:50",
             "label": "positive",
             "confidence_scores": {
-                "positive": "0.9946",
-                "danger": "0.0030",
-                "critical": "0.0016",
-                "emergency": "0.0006"
+                "positive": "0.9937",
+                "danger": "0.0034",
+                "critical": "0.0014",
+                "emergency": "0.0014"
             }
         }
     ]
@@ -311,7 +248,7 @@ python run.py all
 
 자체적으로 위험도 분류 수기 라벨링 작업이 완료된 KISTI DATA/AI 경진대회 제공 데이터를 사용하였습니다. (총 발화 32,973건)
 
-부족한 데이터 및 클래스 불균형 이슈를 해결하기 위해 LLM을 이용해 데이터를 증강하였습니다.
+부족한 데이터 및 클래스 불균형 이슈를 해결하기 위해 LLM을 이용해 데이터를 증강하였습니다. (70,000건)
 
 ##### 하이브리드 모델 아키텍처
 
@@ -377,14 +314,14 @@ python run.py all
 
 | Label            | Precision | Recall | F1-Score | Support |
 | ---------------- | --------- | ------ | -------- | ------- |
-| Positive         | 0.9999    | 0.9890 |  0.9944  |   32111 |
-| Danger           | 0.6987    | 0.9751 |  0.8140  |     642 |
-| Critical         | 0.6763    | 0.9333 |  0.7843  |     150 |
-| Emergency        | 0.6147    | 0.9571 |  0.7486  |      70 |
+| Positive         |    0.9999 | 0.9887 |   0.9943 |   32111 |
+| Danger           |    0.6944 | 0.9766 |   0.8117 |     642 |
+| Critical         |    0.6863 | 0.9333 |   0.7910 |     150 |
+| Emergency        |    0.5826 | 0.9571 |   0.7243 |      70 |
 |                  |           |        |          |         |
-| **Accuracy**     |           |        |  0.9884  |   32973 |
-| **Macro Avg**    | 0.7474    | 0.9636 |  0.8353  |   32973 |
-| **Weighted Avg** | 0.9918    | 0.9884 |  0.9894  |   32973 |
+| **Accuracy**     |           |        |   0.9881 |   32973 |
+| **Macro Avg**    |    0.7408 | 0.9640 |   0.8303 |   32973 |
+| **Weighted Avg** |    0.9916 | 0.9881 |   0.9892 |   32973 |
 
 ![위험도 분류 모델 평가 지표 이미지](./figures/label/evaluation-confusion_matrix_report_plot.png)
 
